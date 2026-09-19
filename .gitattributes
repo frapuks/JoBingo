@@ -1,0 +1,4 @@
+# Fins de ligne LF partout : les migrations sont contrôlées par empreinte, et les
+# scripts shell ou la conf Nginx cassent avec des CRLF venus de Windows.
+* text=auto eol=lf
+*.png binary

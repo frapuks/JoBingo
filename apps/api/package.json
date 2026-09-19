@@ -1,0 +1,30 @@
+{
+  "name": "@jobingo/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --import tsx src/migrate.ts && node --import tsx src/server.ts",
+    "migrate": "node --import tsx src/migrate.ts",
+    "backup": "node --import tsx src/backup.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/rate-limit": "^11.2.0",
+    "@jobingo/shared": "*",
+    "fastify": "^5.12.5",
+    "jose": "^6.2.12",
+    "nodemailer": "^10.0.10",
+    "pg": "^8.23.0",
+    "tsx": "^4.23.13",
+    "web-push": "^3.6.7",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "@types/nodemailer": "^8.0.2",
+    "@types/pg": "^8.23.1",
+    "@types/web-push": "^3.6.4"
+  }
+}

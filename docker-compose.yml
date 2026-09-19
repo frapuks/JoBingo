@@ -1,0 +1,93 @@
+name: jobingo
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER manquant dans .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant dans .env}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB manquant dans .env}
+      # Permet un simple « psql » dans le conteneur (npm run psql).
+      PGUSER: ${POSTGRES_USER}
+      PGDATABASE: ${POSTGRES_DB}
+      TZ: ${TZ:-Europe/Paris}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5013:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    # Contexte = racine du dépôt, pour que l'image voie packages/shared.
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      # Alpine n'a aucun fuseau par défaut : sans tzdata + TZ, les heures seraient en UTC.
+      TZ: ${TZ:-Europe/Paris}
+      PORT: 3000
+      # Variables standard lues à la fois par le module pg et par pg_dump.
+      PGHOST: db
+      PGPORT: 5432
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET manquant dans .env}
+      APP_URL: ${APP_URL:-http://localhost:6013}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+    volumes:
+      - ./backups:/app/backups
+    ports:
+      - "4013:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      # Les migrations passent avant le serveur : on leur laisse le temps, surtout sur le Pi.
+      start_period: 60s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "6013:80"
+
+  # Conteneur jetable pour npm (typecheck, ajout de dépendances) sans rien installer sur l'hôte.
+  # Ses node_modules vivent dans un volume : binaires Linux, jamais mélangés avec l'hôte.
+  outils:
+    profiles: [outils]
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+      - outils_node_modules:/app/node_modules
+
+volumes:
+  pgdata:
+    # Nom figé : dérivé du nom du dossier, un renommage pointerait vers un volume neuf et vide.
+    name: jobingo_pgdata
+  outils_node_modules:
+    name: jobingo_outils_node_modules
