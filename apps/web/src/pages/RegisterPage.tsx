@@ -5,7 +5,7 @@ import { useCurrentUser, useRegister } from '../auth/useAuth';
 import { AuthCard } from '../layout/AuthCard';
 
 export function RegisterPage() {
-  const [form, setForm] = useState({ email: '', displayName: '', password: '' });
+  const [form, setForm] = useState({ email: '', password: '', passwordConfirmation: '' });
   const { data: user } = useCurrentUser();
   const register = useRegister();
   const navigate = useNavigate();
@@ -21,7 +21,6 @@ export function RegisterPage() {
   return (
     <AuthCard title="Créer un compte" onSubmit={submit}>
       {register.error && <Alert severity="error">{register.error.message}</Alert>}
-      <TextField label="Nom affiché" autoComplete="nickname" required {...field('displayName')} />
       <TextField label="Adresse e-mail" type="email" autoComplete="email" required {...field('email')} />
       <TextField
         label="Mot de passe"
@@ -30,6 +29,13 @@ export function RegisterPage() {
         helperText="10 caractères minimum"
         required
         {...field('password')}
+      />
+      <TextField
+        label="Confirmation du mot de passe"
+        type="password"
+        autoComplete="new-password"
+        required
+        {...field('passwordConfirmation')}
       />
       <Button type="submit" variant="contained" size="large" loading={register.isPending}>
         Créer mon compte

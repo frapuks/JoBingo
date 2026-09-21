@@ -16,7 +16,8 @@
     "backup": "docker compose exec api npm run backup",
     "typecheck": "docker compose --profile outils run --rm outils sh -c \"npm ci --no-audit --no-fund && npm run typecheck --workspaces\"",
     "outils": "docker compose --profile outils run --rm outils",
-    "reset": "node scripts/reset.mjs"
+    "reset": "node scripts/reset.mjs",
+    "icons": "docker compose --profile outils run --rm outils sh -c \"npm i --prefix /tmp/sharp --no-save --no-audit --no-fund --silent sharp && node apps/web/scripts/generate-icons.mjs\""
   },
   "devDependencies": {
     "typescript": "^5.9.3"

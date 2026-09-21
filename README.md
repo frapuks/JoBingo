@@ -33,6 +33,7 @@ npm run up                # = docker compose up -d --build
 | `npm run psql`      | console SQL                                                        |
 | `npm run backup`    | sauvegarde manuelle dans `./backups`                               |
 | `npm run typecheck` | vérifie les types des trois workspaces, dans un conteneur          |
+| `npm run icons`     | regénère les icônes depuis `apps/web/icons-source/logo.png`        |
 | `npm run reset`     | **DÉTRUIT la base** (supprime le volume), après confirmation       |
 
 Pour ajouter une dépendance sans npm sur l'hôte :

@@ -17,8 +17,9 @@ export function HomePage() {
   return (
     <Stack spacing={2}>
       <Typography variant="h5" component="h1">
-        Bonjour {user?.displayName} !
+        Bonjour !
       </Typography>
+      <Typography color="text.secondary">Connecté en tant que {user?.email}</Typography>
       <Card>
         <CardContent>
           <Stack spacing={1.5}>

@@ -1,4 +1,5 @@
 import {
+  ChangePasswordInput,
   ForgotPasswordInput,
   LoginInput,
   RegisterInput,
@@ -36,6 +37,7 @@ function useSessionMutation<S extends z.ZodType>(path: string, schema: S) {
 export const useLogin = () => useSessionMutation('/auth/login', LoginInput);
 export const useRegister = () => useSessionMutation('/auth/register', RegisterInput);
 export const useResetPassword = () => useSessionMutation('/auth/reset-password', ResetPasswordInput);
+export const useChangePassword = () => useSessionMutation('/auth/change-password', ChangePasswordInput);
 
 export function useForgotPassword() {
   return useMutation({
@@ -44,10 +46,10 @@ export function useForgotPassword() {
   });
 }
 
-export function useLogout(allDevices = false) {
+export function useLogout() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => post(allDevices ? '/auth/logout-all' : '/auth/logout'),
+    mutationFn: () => post('/auth/logout'),
     onSuccess: () => {
       // Plus aucune donnée de l'ancien compte ne doit rester en mémoire.
       queryClient.clear();

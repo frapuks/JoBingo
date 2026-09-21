@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import {
+  ChangePasswordInput,
   ForgotPasswordInput,
   LoginInput,
   RegisterInput,
@@ -37,11 +38,11 @@ export async function authRoutes(app: FastifyInstance) {
       const passwordHash = await hashPassword(input.password);
 
       const { rows } = await pool.query<UserRow>(
-        `INSERT INTO users (email, display_name, password_hash)
-         VALUES ($1, $2, $3)
+        `INSERT INTO users (email, password_hash)
+         VALUES ($1, $2)
          ON CONFLICT (email) DO NOTHING
          RETURNING ${USER_COLUMNS}`,
-        [input.email, input.displayName, passwordHash],
+        [input.email, passwordHash],
       );
       const row = rows[0];
 
@@ -80,13 +81,33 @@ export async function authRoutes(app: FastifyInstance) {
 
   app.get('/auth/me', { preHandler: requireAuth }, async (request): Promise<User> => currentUser(request));
 
-  app.post('/auth/logout-all', { preHandler: requireAuth }, async (request, reply) => {
-    await pool.query('UPDATE users SET token_version = token_version + 1 WHERE id = $1', [
-      currentUser(request).id,
-    ]);
-    closeSession(reply);
-    return reply.code(204).send();
-  });
+  app.post(
+    '/auth/change-password',
+    { preHandler: requireAuth, config: { rateLimit: { max: 10, timeWindow: '15 minutes' } } },
+    async (request, reply): Promise<User> => {
+      const input = ChangePasswordInput.parse(request.body);
+      const { id } = currentUser(request);
+      const { rows } = await pool.query<{ password_hash: string }>(
+        'SELECT password_hash FROM users WHERE id = $1',
+        [id],
+      );
+      // Mot de passe actuel exigé : un téléphone resté déverrouillé ne suffit pas à prendre le compte.
+      if (!rows[0] || !(await verifyPassword(input.currentPassword, rows[0].password_hash))) {
+        return reply.code(400).send({ error: 'Mot de passe actuel incorrect.' });
+      }
+
+      // token_version incrémentée : les autres appareils sont déconnectés, celui-ci reçoit un jeton neuf.
+      const { rows: updated } = await pool.query<UserRow>(
+        `UPDATE users SET password_hash = $2, token_version = token_version + 1
+         WHERE id = $1
+         RETURNING ${USER_COLUMNS}`,
+        [id, await hashPassword(input.password)],
+      );
+      const row = updated[0];
+      await openSession(reply, { userId: row.id, tokenVersion: row.token_version });
+      return toUser(row);
+    },
+  );
 
   app.post(
     '/auth/forgot-password',

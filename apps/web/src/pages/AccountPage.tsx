@@ -1,10 +1,13 @@
 import { PushConfig } from '@jobingo/shared';
+import LockReset from '@mui/icons-material/LockReset';
 import { Alert, Button, Card, CardContent, Stack, Typography } from '@mui/material';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { getJson } from '../api';
 import { useCurrentUser, useLogout } from '../auth/useAuth';
 import { isIosOutsideHomeScreen, subscribeToPush } from '../push';
+import { ChangePasswordDialog } from './ChangePasswordDialog';
 
 function NotificationsCard() {
   const config = useQuery({ queryKey: ['push-config'], queryFn: () => getJson('/push/config', PushConfig) });
@@ -42,9 +45,9 @@ function NotificationsCard() {
 export function AccountPage() {
   const { data: user } = useCurrentUser();
   const logout = useLogout();
-  const logoutAll = useLogout(true);
   const navigate = useNavigate();
-  const toLogin = { onSuccess: () => navigate('/connexion', { replace: true }) };
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [passwordChanged, setPasswordChanged] = useState(false);
 
   if (!user) return null;
 
@@ -55,18 +58,42 @@ export function AccountPage() {
       </Typography>
       <Card>
         <CardContent>
-          <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
-            <Typography variant="h6">{user.displayName}</Typography>
-            <Typography color="text.secondary">{user.email}</Typography>
-          </Stack>
+          <Typography variant="subtitle2" color="text.secondary">
+            Adresse e-mail
+          </Typography>
+          <Typography variant="h6" sx={{ wordBreak: 'break-all' }}>
+            {user.email}
+          </Typography>
+          <Button
+            variant="outlined"
+            startIcon={<LockReset />}
+            onClick={() => {
+              setPasswordChanged(false);
+              setDialogOpen(true);
+            }}
+            sx={{ mt: 2 }}
+          >
+            Changer son mot de passe
+          </Button>
+          {passwordChanged && (
+            <Alert severity="success" sx={{ mt: 2 }}>
+              Mot de passe modifié. Vos autres appareils ont été déconnectés.
+            </Alert>
+          )}
         </CardContent>
       </Card>
+      <ChangePasswordDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        onChanged={() => setPasswordChanged(true)}
+      />
       <NotificationsCard />
-      <Button variant="contained" loading={logout.isPending} onClick={() => logout.mutate(undefined, toLogin)}>
+      <Button
+        variant="contained"
+        loading={logout.isPending}
+        onClick={() => logout.mutate(undefined, { onSuccess: () => navigate('/connexion', { replace: true }) })}
+      >
         Se déconnecter
-      </Button>
-      <Button color="secondary" loading={logoutAll.isPending} onClick={() => logoutAll.mutate(undefined, toLogin)}>
-        Déconnecter tous mes appareils
       </Button>
     </Stack>
   );

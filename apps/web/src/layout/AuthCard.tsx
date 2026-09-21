@@ -27,7 +27,7 @@ export function AuthCard({ title, onSubmit, children }: Props) {
       <Paper component="form" onSubmit={handleSubmit} noValidate sx={{ width: '100%', maxWidth: 400, p: 3 }}>
         <Stack spacing={2.5}>
           <Stack spacing={1} sx={{ alignItems: 'center' }}>
-            <Box component="img" src="/icons/favicon.svg" alt="" sx={{ width: 72, height: 72 }} />
+            <Box component="img" src="/icons/icon-192.png" alt="" sx={{ width: 96, height: 96, borderRadius: '22%' }} />
             <Typography variant="h5" component="h1">
               {title}
             </Typography>
