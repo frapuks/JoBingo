@@ -5,11 +5,19 @@ import { pool } from './db/pool';
 
 // Les clés VAPID identifient ce serveur auprès des services push. Elles se sauvegardent
 // avec les autres secrets : les regénérer invalide tous les abonnements existants.
-export const pushEnabled = Boolean(config.vapid.publicKey && config.vapid.privateKey);
-
-if (pushEnabled) {
-  webpush.setVapidDetails(config.vapid.subject, config.vapid.publicKey, config.vapid.privateKey);
+function configureVapid(): boolean {
+  if (!config.vapid.publicKey || !config.vapid.privateKey) return false;
+  try {
+    webpush.setVapidDetails(config.vapid.subject, config.vapid.publicKey, config.vapid.privateKey);
+    return true;
+  } catch (err) {
+    // Un réglage push invalide ne doit pas empêcher l'app de tourner : le reste marche sans.
+    console.error(`Notifications désactivées, réglage VAPID invalide : ${(err as Error).message}`);
+    return false;
+  }
 }
+
+export const pushEnabled = configureVapid();
 
 export interface PushPayload {
   title: string;
