@@ -2,11 +2,14 @@ import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyError } from 'fastify';
 import { ZodError } from 'zod';
+import { syncAdmins } from './admins';
 import { config } from './config';
 import { pool } from './db/pool';
 import { authRoutes } from './routes/auth';
 import { healthRoutes } from './routes/health';
+import { matchRoutes } from './routes/matches';
 import { pushRoutes } from './routes/push';
+import { teamRoutes } from './routes/team';
 
 const app = Fastify({ logger: true, trustProxy: true });
 
@@ -39,6 +42,11 @@ app.setNotFoundHandler((_request, reply) => reply.code(404).send({ error: 'Resso
 await app.register(healthRoutes, { prefix: '/api' });
 await app.register(authRoutes, { prefix: '/api' });
 await app.register(pushRoutes, { prefix: '/api' });
+await app.register(teamRoutes, { prefix: '/api' });
+await app.register(matchRoutes, { prefix: '/api' });
+
+// Recalculé au démarrage : le rôle admin ne dépend que d'ADMIN_EMAILS.
+app.log.info(`Rôles administrateur synchronisés (${await syncAdmins()} compte(s) modifié(s))`);
 
 for (const signal of ['SIGTERM', 'SIGINT'] as const) {
   process.on(signal, async () => {

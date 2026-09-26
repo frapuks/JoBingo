@@ -1,4 +1,24 @@
-import { post } from './api';
+import { del, post } from './api';
+
+export function pushSupported(): boolean {
+  return 'serviceWorker' in navigator && 'PushManager' in window;
+}
+
+// L'abonnement appartient à l'appareil : c'est lui qui dit si les notifications sont actives ici.
+export async function isSubscribed(): Promise<boolean> {
+  if (!pushSupported()) return false;
+  const registration = await navigator.serviceWorker.ready;
+  return (await registration.pushManager.getSubscription()) !== null;
+}
+
+export async function unsubscribeFromPush(): Promise<void> {
+  const registration = await navigator.serviceWorker.ready;
+  const subscription = await registration.pushManager.getSubscription();
+  if (!subscription) return;
+  // Le serveur est prévenu avant : sinon il continuerait d'envoyer dans le vide.
+  await del('/push/subscriptions', { endpoint: subscription.endpoint });
+  await subscription.unsubscribe();
+}
 
 // Sur iPhone, les notifications n'existent QUE pour une app installée sur l'écran
 // d'accueil : dans Safari, PushManager est absent et aucune demande n'est possible.
@@ -19,16 +39,23 @@ function base64UrlToBytes(value: string): Uint8Array<ArrayBuffer> {
 }
 
 export async function subscribeToPush(publicKey: string): Promise<void> {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+  if (!pushSupported()) {
     throw new Error('Ce navigateur ne gère pas les notifications.');
   }
   if ((await Notification.requestPermission()) !== 'granted') {
     throw new Error('Notifications refusées. Autorisez-les dans les réglages de l\'appareil.');
   }
   const registration = await navigator.serviceWorker.ready;
-  const subscription = await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: base64UrlToBytes(publicKey),
-  });
+  let subscription: PushSubscription;
+  try {
+    subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: base64UrlToBytes(publicKey),
+    });
+  } catch {
+    // Messages du navigateur en anglais et peu parlants : navigateur non compatible,
+    // service push injoignable, notifications coupées au niveau du système.
+    throw new Error("Impossible d'activer les notifications sur cet appareil.");
+  }
   await post('/push/subscriptions', subscription.toJSON());
 }

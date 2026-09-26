@@ -14,6 +14,10 @@ export const config = {
   port: Number(process.env.PORT ?? 3000),
   jwtSecret,
   appUrl: (process.env.APP_URL ?? 'http://localhost:6013').replace(/\/$/, ''),
+  adminEmails: (process.env.ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean),
   smtp: {
     host: process.env.SMTP_HOST ?? '',
     port: Number(process.env.SMTP_PORT || 587),

@@ -1,10 +1,12 @@
-import HomeRounded from '@mui/icons-material/HomeRounded';
+import EmojiEventsRounded from '@mui/icons-material/EmojiEventsRounded';
+import GroupsRounded from '@mui/icons-material/GroupsRounded';
 import PersonRounded from '@mui/icons-material/PersonRounded';
 import { BottomNavigation, BottomNavigationAction, Box, Paper } from '@mui/material';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 
 const TABS = [
-  { path: '/', label: 'Accueil', icon: <HomeRounded /> },
+  { path: '/matchs', label: 'Matchs', icon: <EmojiEventsRounded /> },
+  { path: '/joueurs', label: 'Joueurs', icon: <GroupsRounded /> },
   { path: '/compte', label: 'Compte', icon: <PersonRounded /> },
 ];
 
@@ -13,7 +15,8 @@ const NAV_HEIGHT = 56;
 export function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const current = TABS.find((tab) => tab.path === location.pathname)?.path ?? false;
+  // Une fiche joueur garde l'onglet Joueurs allumé : on compare le début du chemin.
+  const current = TABS.find((tab) => location.pathname.startsWith(tab.path))?.path ?? false;
 
   return (
     <Box

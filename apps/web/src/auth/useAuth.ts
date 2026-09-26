@@ -1,5 +1,6 @@
 import {
   ChangePasswordInput,
+  DisplayNameInput,
   ForgotPasswordInput,
   LoginInput,
   RegisterInput,
@@ -8,7 +9,7 @@ import {
 } from '@jobingo/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { z } from 'zod';
-import { ApiError, getJson, post, postJson, validate } from '../api';
+import { ApiError, getJson, patchJson, post, postJson, validate } from '../api';
 
 const ME = ['me'] as const;
 
@@ -43,6 +44,14 @@ export function useForgotPassword() {
   return useMutation({
     mutationFn: (input: ForgotPasswordInput) =>
       post('/auth/forgot-password', validate(ForgotPasswordInput, input)),
+  });
+}
+
+export function useUpdateDisplayName() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: DisplayNameInput) => patchJson('/auth/me', validate(DisplayNameInput, input), User),
+    onSuccess: (user) => queryClient.setQueryData(ME, user),
   });
 }
 

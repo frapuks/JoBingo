@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import {
   ChangePasswordInput,
+  DisplayNameInput,
   ForgotPasswordInput,
   LoginInput,
   RegisterInput,
@@ -8,6 +9,7 @@ import {
   type User,
 } from '@jobingo/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { isAdminEmail } from '../admins';
 import { currentUser, requireAuth } from '../auth/guards';
 import { burnPasswordCheck, hashPassword, verifyPassword } from '../auth/password';
 import { closeSession, openSession } from '../auth/session';
@@ -38,11 +40,13 @@ export async function authRoutes(app: FastifyInstance) {
       const passwordHash = await hashPassword(input.password);
 
       const { rows } = await pool.query<UserRow>(
-        `INSERT INTO users (email, password_hash)
-         VALUES ($1, $2)
+        // Le rôle est décidé ici aussi, sinon un compte créé après le démarrage devrait
+        // attendre le redémarrage suivant pour devenir administrateur.
+        `INSERT INTO users (email, password_hash, is_admin)
+         VALUES ($1, $2, $3)
          ON CONFLICT (email) DO NOTHING
          RETURNING ${USER_COLUMNS}`,
-        [input.email, passwordHash],
+        [input.email, passwordHash, isAdminEmail(input.email)],
       );
       const row = rows[0];
 
@@ -80,6 +84,15 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   app.get('/auth/me', { preHandler: requireAuth }, async (request): Promise<User> => currentUser(request));
+
+  app.patch('/auth/me', { preHandler: requireAuth }, async (request): Promise<User> => {
+    const input = DisplayNameInput.parse(request.body);
+    const { rows } = await pool.query<UserRow>(
+      `UPDATE users SET display_name = $2 WHERE id = $1 RETURNING ${USER_COLUMNS}`,
+      [currentUser(request).id, input.displayName],
+    );
+    return toUser(rows[0]);
+  });
 
   app.post(
     '/auth/change-password',

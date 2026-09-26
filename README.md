@@ -85,6 +85,13 @@ jamais dans Safari.
 Les mises à jour s'appliquent seules : au lancement suivant, ou au retour dans l'app si
 elle était restée ouverte. Il n'y a jamais de cache à vider.
 
+## Administrateur
+
+`ADMIN_EMAILS` dans le `.env` liste les adresses administratrices, séparées par des
+virgules. Le rôle est recalculé à chaque démarrage et à chaque inscription : il ne se
+modifie donc jamais depuis l'application. L'administrateur gère la liste des joueurs et
+valide les patterns proposés par les supporters.
+
 ## Mot de passe oublié
 
 Si `SMTP_*` est renseigné dans `.env`, le lien de réinitialisation part par e-mail. Sinon,
@@ -102,6 +109,20 @@ docker compose exec api npx web-push generate-vapid-keys
 
 Recopier les deux clés dans `.env`, puis relancer `docker compose up -d`. **Sauvegarder
 ces clés avec les autres secrets** : les regénérer invalide tous les abonnements existants.
+
+Chacun active ensuite les notifications depuis la page Compte. Sur iPhone, il faut avoir
+installé l'app sur l'écran d'accueil : dans Safari, l'abonnement n'existe pas.
+
+Quatre événements déclenchent une notification :
+
+| Événement                         | Destinataires                         |
+| --------------------------------- | ------------------------------------- |
+| Création d'un match               | tout le monde, sauf le créateur       |
+| Lancement, mi-temps, fin du match | les participants, sauf celui qui agit |
+| Refus d'un pattern proposé        | son auteur                            |
+
+Un abonnement auquel le service push répond « disparu » (404 ou 410) est supprimé
+automatiquement : les téléphones qui ont désinstallé l'app ne s'accumulent pas en base.
 
 ## Sauvegarde et restauration
 

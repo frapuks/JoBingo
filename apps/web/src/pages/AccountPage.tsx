@@ -1,21 +1,43 @@
 import { PushConfig } from '@jobingo/shared';
+import EditRounded from '@mui/icons-material/EditRounded';
+import FactCheckRounded from '@mui/icons-material/FactCheckRounded';
 import LockReset from '@mui/icons-material/LockReset';
-import { Alert, Button, Card, CardContent, Stack, Typography } from '@mui/material';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import {
+  Alert,
+  Button,
+  Card,
+  CardContent,
+  FormControlLabel,
+  IconButton,
+  Stack,
+  Switch,
+  Typography,
+} from '@mui/material';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { getJson } from '../api';
 import { useCurrentUser, useLogout } from '../auth/useAuth';
-import { isIosOutsideHomeScreen, subscribeToPush } from '../push';
+import { isIosOutsideHomeScreen, isSubscribed, subscribeToPush, unsubscribeFromPush } from '../push';
+import { usePendingPatterns } from '../team/useTeam';
 import { ChangePasswordDialog } from './ChangePasswordDialog';
+import { DisplayNameDialog } from './DisplayNameDialog';
 
 function NotificationsCard() {
+  const queryClient = useQueryClient();
   const config = useQuery({ queryKey: ['push-config'], queryFn: () => getJson('/push/config', PushConfig) });
-  const subscribe = useMutation({ mutationFn: subscribeToPush });
+  const subscribed = useQuery({ queryKey: ['push-subscribed'], queryFn: isSubscribed });
+
+  const toggle = useMutation({
+    mutationFn: async (active: boolean) => {
+      if (active) await subscribeToPush(config.data?.publicKey ?? '');
+      else await unsubscribeFromPush();
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['push-subscribed'] }),
+  });
 
   // Clés VAPID absentes côté serveur : la fonctionnalité reste invisible.
   if (!config.data?.enabled || !config.data.publicKey) return null;
-  const publicKey = config.data.publicKey;
 
   return (
     <Card>
@@ -29,11 +51,20 @@ function NotificationsCard() {
             </Alert>
           ) : (
             <>
-              {subscribe.error && <Alert severity="error">{subscribe.error.message}</Alert>}
-              {subscribe.isSuccess && <Alert severity="success">Notifications activées sur cet appareil.</Alert>}
-              <Button variant="outlined" loading={subscribe.isPending} onClick={() => subscribe.mutate(publicKey)}>
-                Activer les notifications
-              </Button>
+              {toggle.error && <Alert severity="error">{toggle.error.message}</Alert>}
+              <FormControlLabel
+                // labelPlacement start : le libellé à gauche, l'interrupteur au bout de la ligne.
+                labelPlacement="start"
+                sx={{ m: 0, justifyContent: 'space-between' }}
+                control={
+                  <Switch
+                    checked={subscribed.data ?? false}
+                    disabled={subscribed.isPending || toggle.isPending}
+                    onChange={(event) => toggle.mutate(event.target.checked)}
+                  />
+                }
+                label="Sur cet appareil"
+              />
             </>
           )}
         </Stack>
@@ -48,6 +79,8 @@ export function AccountPage() {
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [passwordChanged, setPasswordChanged] = useState(false);
+  const [nameOpen, setNameOpen] = useState(false);
+  const pending = usePendingPatterns();
 
   if (!user) return null;
 
@@ -59,11 +92,20 @@ export function AccountPage() {
       <Card>
         <CardContent>
           <Typography variant="subtitle2" color="text.secondary">
+            Nom
+          </Typography>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            <Typography variant="h6" sx={{ flex: 1, minWidth: 0 }} noWrap>
+              {user.displayName ?? 'Non renseigné'}
+            </Typography>
+            <IconButton aria-label="Modifier mon nom" onClick={() => setNameOpen(true)}>
+              <EditRounded />
+            </IconButton>
+          </Stack>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 1 }}>
             Adresse e-mail
           </Typography>
-          <Typography variant="h6" sx={{ wordBreak: 'break-all' }}>
-            {user.email}
-          </Typography>
+          <Typography sx={{ wordBreak: 'break-all' }}>{user.email}</Typography>
           <Button
             variant="outlined"
             startIcon={<LockReset />}
@@ -82,11 +124,21 @@ export function AccountPage() {
           )}
         </CardContent>
       </Card>
+      {nameOpen && <DisplayNameDialog open currentName={user.displayName} onClose={() => setNameOpen(false)} />}
       <ChangePasswordDialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         onChanged={() => setPasswordChanged(true)}
       />
+      {user.isAdmin && (
+        <Button
+          variant="outlined"
+          startIcon={<FactCheckRounded />}
+          onClick={() => navigate('/patterns-en-attente')}
+        >
+          Patterns à valider{pending.data?.length ? ` (${pending.data.length})` : ''}
+        </Button>
+      )}
       <NotificationsCard />
       <Button
         variant="contained"

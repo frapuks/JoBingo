@@ -15,7 +15,23 @@ const NewPassword = z
 export const User = z.object({
   id: z.number().int(),
   email: z.string(),
+  // Facultatif : sans nom, c'est l'adresse e-mail qui s'affiche.
+  displayName: z.string().nullable(),
+  // Piloté par ADMIN_EMAILS dans le .env, jamais modifiable depuis l'application.
+  isAdmin: z.boolean(),
 });
+
+// Un champ vidé efface le nom et fait revenir l'adresse e-mail. Il arrive en chaîne
+// vide depuis le formulaire, ou en null une fois passé par ce schéma côté front.
+export const DisplayNameInput = z.object({
+  displayName: z
+    .union([z.string(), z.null()])
+    .transform((value) => (value === null ? null : value.trim() || null))
+    .refine((value) => value === null || (value.length >= 2 && value.length <= 40), {
+      error: 'Le nom doit contenir entre 2 et 40 caractères.',
+    }),
+});
+export type DisplayNameInput = z.infer<typeof DisplayNameInput>;
 export type User = z.infer<typeof User>;
 
 export const LoginInput = z.object({

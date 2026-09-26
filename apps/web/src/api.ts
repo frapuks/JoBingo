@@ -43,6 +43,15 @@ export async function post(path: string, body?: unknown): Promise<void> {
   await send('POST', path, body);
 }
 
+export async function patch(path: string, body?: unknown): Promise<void> {
+  await send('PATCH', path, body);
+}
+
+export async function patchJson<T>(path: string, body: unknown, schema: z.ZodType<T>): Promise<T> {
+  const res = await send('PATCH', path, body);
+  return schema.parse(await res.json());
+}
+
 export async function del(path: string, body?: unknown): Promise<void> {
   await send('DELETE', path, body);
 }

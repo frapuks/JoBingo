@@ -43,6 +43,7 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD}
       PGDATABASE: ${POSTGRES_DB}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET manquant dans .env}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
       APP_URL: ${APP_URL:-http://localhost:6013}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}

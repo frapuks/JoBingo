@@ -22,6 +22,13 @@ export async function requireAuth(request: FastifyRequest, reply: FastifyReply) 
   request.user = toUser(row);
 }
 
+// À placer après requireAuth dans la liste des preHandler.
+export async function requireAdmin(request: FastifyRequest, reply: FastifyReply) {
+  if (!request.user?.isAdmin) {
+    return reply.code(403).send({ error: "Réservé à l'administrateur." });
+  }
+}
+
 export function currentUser(request: FastifyRequest): User {
   if (!request.user) throw new Error('requireAuth manquant sur cette route.');
   return request.user;
