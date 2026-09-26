@@ -13,6 +13,43 @@ Monorepo npm workspaces :
 Tout tourne en Docker (`db`, `api`, `web`). Il n'y a rien à installer sur la machine hôte
 en dehors de Docker (et de Node si l'on veut utiliser les raccourcis `npm run …`).
 
+## Comment ça marche
+
+L'app a trois onglets : **Matchs**, **Joueurs**, **Compte**.
+
+**Joueurs et patterns.** L'administrateur tient la liste des joueurs, chacun avec un nom et
+un numéro de maillot. Un *pattern* est une action observable sur le terrain, par exemple
+« Marque un but en suspension ». N'importe quel supporter en propose ; la proposition reste
+visible de tous, marquée « En attente », jusqu'à ce que l'administrateur la valide, la
+corrige, ou la refuse. Seuls les patterns validés entrent dans les tirages.
+
+**Un match.** N'importe quel supporter crée un match : un nom, et les joueurs convoqués.
+Ceux qui n'ont aucun pattern validé ne sont pas sélectionnables. Son créateur en devient le
+gestionnaire : lui seul le lance, siffle la mi-temps, relance et termine, chaque fois après
+confirmation. Tant que le match n'est pas lancé, il peut aussi en modifier le nom et les
+convoqués, ou le supprimer.
+
+**Pendant le match.** Les autres supporters rejoignent le match, avant ou pendant. Au coup
+d'envoi, un pattern est tiré au hasard par joueur convoqué, le même pour tout le monde. Il
+suffit de toucher une carte pour la cocher quand on a vu l'action, et de la retoucher pour
+la décocher. Chacun ne voit que son propre score.
+
+**Mi-temps et fin.** Les cases se bloquent et le classement apparaît. Toucher une ligne du
+classement affiche la grille de ce participant. À égalité, celui qui a atteint son score en
+premier passe devant. Un match terminé reste consultable mais ne change plus.
+
+**Règles appliquées par le serveur**, jamais seulement par l'écran :
+
+- Un match lancé depuis plus de 4 h est considéré comme terminé, classement figé.
+- Un match créé mais jamais lancé disparaît au bout de 24 h.
+- Abandonner un match efface ses coches : c'est comme n'avoir jamais participé. Le créateur,
+  lui, ne peut pas abandonner ; il supprime son match ou le mène à son terme.
+- Les grilles des autres ne sont lisibles qu'une fois les scores dévoilés.
+
+Les comptes sont tous égaux, sauf pour la validation des patterns et la gestion des joueurs,
+réservées à l'administrateur (voir plus bas). Chacun peut se donner un nom depuis la page
+Compte ; sans nom, c'est son adresse e-mail qui s'affiche.
+
 ## Démarrage local
 
 ```sh
@@ -20,7 +57,7 @@ cp .env.example .env      # puis remplir JWT_SECRET et POSTGRES_PASSWORD
 npm run up                # = docker compose up -d --build
 ```
 
-- App : http://localhost:6013. Chacun crée son compte ; tous les comptes sont égaux.
+- App : http://localhost:6013. Chacun crée son compte librement.
 - API : http://localhost:4013/api/health
 - Postgres : localhost:5013
 
@@ -146,3 +183,15 @@ Les fichiers `apps/api/migrations/NNN_nom.sql` sont appliqués dans l'ordre, une
 chacun dans sa propre transaction. Ils sont tracés dans la table `_migrations`.
 **Un fichier déjà appliqué ne se modifie jamais** : on en ajoute un nouveau. L'API refuse de
 démarrer si elle détecte qu'une migration appliquée a été modifiée.
+
+| Migration                      | Contenu                                               |
+| ------------------------------ | ----------------------------------------------------- |
+| `001_schema_initial`           | comptes, réinitialisations, abonnements push          |
+| `002_suppression_nom_affiche`  | retrait du nom obligatoire à l'inscription            |
+| `003_role_admin`               | colonne `is_admin`, pilotée par `ADMIN_EMAILS`        |
+| `004_equipe`                   | joueurs et patterns                                   |
+| `005_matchs`                   | matchs, grilles, participants et coches               |
+| `006_nom_affiche`              | nom facultatif sur les comptes                        |
+
+Les grilles de match conservent une **copie** du nom du joueur, de son numéro et du texte du
+pattern tiré. Modifier ou supprimer un joueur ou un pattern ne change donc aucun match passé.
